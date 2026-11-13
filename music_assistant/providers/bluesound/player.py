@@ -382,6 +382,7 @@ class BluesoundPlayer(Player):
                 self._attr_poll_interval = IDLE_POLL_INTERVAL
 
         self.sync_status = await self.client.sync_status()
+        self._update_device_info()
         self._attr_source_list = await self._get_bluesound_sources()
 
         self._attr_name = self.sync_status.name
@@ -474,6 +475,17 @@ class BluesoundPlayer(Player):
         inputs = await self.client.inputs(timeout=timeout)
         inputs_as_sources = [_input_to_ma_source(bluos_input) for bluos_input in inputs]
         return [_preset_to_ma_source(preset) for preset in presets] + inputs_as_sources
+
+    def _update_device_info(self) -> None:
+        """Take the brand and model the player reports about itself in SyncStatus."""
+        # mDNS only carries the model code (N132) and BluOS is the platform, not the
+        # brand. SyncStatus names the brand (Bluesound) and the product (NODE).
+        if self.sync_status.brand:
+            self._attr_device_info.manufacturer = self.sync_status.brand
+        if self.sync_status.model_name:
+            self._attr_device_info.model = self.sync_status.model_name
+        if self.sync_status.model:
+            self._attr_device_info.model_id = self.sync_status.model
 
     def _set_polling_dynamic(self, poll_count: int = 6, poll_interval: float = 0.5) -> None:
         self.poll_state = POLL_STATE_DYNAMIC
